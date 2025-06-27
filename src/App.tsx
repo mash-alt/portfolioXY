@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import './App.css'
@@ -7,7 +7,8 @@ import './App.css'
 const importImages = () => {
   const imageModules = import.meta.glob('./assets/images/*.{png,jpg,jpeg}', { eager: true })
   const webpModules = import.meta.glob('./assets/images/webp/*.webp', { eager: true })
-  const images: { src: string; webpSrc: string; name: string; category: string }[] = []
+  const thumbModules = import.meta.glob('./assets/images/thumbnails/*.webp', { eager: true })
+  const images: { src: string; webpSrc: string; thumbSrc: string; name: string; category: string }[] = []
   
   Object.entries(imageModules).forEach(([path, module]) => {
     const filename = path.split('/').pop()?.split('.')[0] || ''
@@ -17,6 +18,10 @@ const importImages = () => {
     const webpPath = path.replace('/images/', '/images/webp/').replace(/\.(jpg|jpeg|png)$/i, '.webp')
     const webpSrc = webpModules[webpPath] ? (webpModules[webpPath] as any).default : src
     
+    // Find corresponding thumbnail
+    const thumbPath = path.replace('/images/', '/images/thumbnails/').replace(/\.(jpg|jpeg|png)$/i, '.webp')
+    const thumbSrc = thumbModules[thumbPath] ? (thumbModules[thumbPath] as any).default : webpSrc
+    
     // Categorize images based on filename
     let category = 'portrait'
     if (filename.includes('cityscape') || filename.includes('cityshot') || filename.includes('citycape')) category = 'cityscape'
@@ -25,7 +30,7 @@ const importImages = () => {
     else if (filename.includes('lowlight') || filename.includes('sunset')) category = 'lowlight'
     else if (filename.includes('portrait') || filename.includes('potrait')) category = 'portrait'
     
-    images.push({ src, webpSrc, name: filename, category })
+    images.push({ src, webpSrc, thumbSrc, name: filename, category })
   })
   
   return images
@@ -88,7 +93,7 @@ const Footer = () => {
 }
 
 const ImageCard = ({ image, index, onClick }: { 
-  image: { src: string; webpSrc: string; name: string; category: string }; 
+  image: { src: string; webpSrc: string; thumbSrc: string; name: string; category: string }; 
   index: number; 
   onClick: () => void 
 }) => {
@@ -103,11 +108,11 @@ const ImageCard = ({ image, index, onClick }: {
   useEffect(() => {
     const img = new Image()
     img.onload = () => {
-      setImageSrc(image.webpSrc)
+      setImageSrc(image.thumbSrc)
       setImageLoaded(true)
     }
-    img.src = image.webpSrc
-  }, [image.webpSrc])
+    img.src = image.thumbSrc
+  }, [image.thumbSrc])
 
   return (
     <motion.div
@@ -128,7 +133,9 @@ const ImageCard = ({ image, index, onClick }: {
         <div className="image-placeholder loading-shimmer" />
       ) : (
         <motion.img
-          src={imageSrc}
+          src={image.thumbSrc}
+          srcSet={`${image.thumbSrc} 400w, ${image.webpSrc} 900w`}
+          sizes="(max-width: 600px) 100vw, 25vw"
           alt={image.name}
           className="portfolio-image"
           initial={{ opacity: 0 }}
